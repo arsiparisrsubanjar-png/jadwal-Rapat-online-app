@@ -1,0 +1,509 @@
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jadwal Ruang Rapat - BLUD RSU Kota Banjar</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Firebase
+        window.initializeApp = initializeApp;
+        window.getAuth = getAuth;
+        window.signInAnonymously = signInAnonymously;
+        window.signInWithCustomToken = signInWithCustomToken;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.getFirestore = getFirestore;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.onSnapshot = onSnapshot;
+        window.deleteDoc = deleteDoc;
+        window.doc = doc;
+        window.query = query;
+        window.getDocs = getDocs;
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1f2937; /* Darker background */
+            color: #d1d5db; /* Light gray text */
+        }
+        /* Custom scrollbar for better aesthetics in dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2d3748; /* gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #718096; /* gray-500 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0; /* gray-400 */
+        }
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            margin-left: -125px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1;
+            left: 50%;
+            bottom: 30px;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.5s linear;
+        }
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        /* Style for date/time picker icon */
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+        .modal-content {
+            background-color: #1f2937;
+            color: #d1d5db;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #374151;
+            width: 80%;
+            max-width: 400px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .close-btn {
+            color: #aaa;
+            align-self: flex-end;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-btn:hover,
+        .close-btn:focus {
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-gray-800 shadow-md">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <div class="flex items-center space-x-4">
+                    <!-- Placeholder for Logo -->
+                    <div class="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h4M8 7a2 2 0 012-2h4a2 2 0 012 2v8a2 2 0 01-2 2h-4a2 2 0 01-2-2V7z" />
+                        </svg>
+                    </div>
+                    <h1 class="text-xl sm:text-2xl font-bold text-white">Jadwal Ruang Rapat BLUD RSU Kota Banjar</h1>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Booking Form -->
+            <div class="lg:col-span-1 bg-gray-900 text-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 border-b border-gray-600 pb-3">Daftar Jadwal Baru</h2>
+                <form id="bookingForm" class="space-y-5">
+                    <div>
+                        <label for="organizer" class="block text-sm font-medium text-gray-300 mb-1">Nama / Penanggung Jawab</label>
+                        <input type="text" id="organizer" name="organizer" class="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-800 text-white focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: Bagian IT" required>
+                    </div>
+                    <div>
+                        <label for="agenda" class="block text-sm font-medium text-gray-300 mb-1">Agenda Rapat</label>
+                        <input type="text" id="agenda" name="agenda" class="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-800 text-white focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: Rapat Koordinasi Bulanan" required>
+                    </div>
+                    <div>
+                        <label for="room" class="block text-sm font-medium text-gray-300 mb-1">Pilih Ruangan</label>
+                        <select id="room" name="room" class="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-800 text-white focus:ring-blue-500 focus:border-blue-500" required>
+                            <option value="Ruang Rapat Aula Edelweiss">Ruang Rapat Aula Edelweiss</option>
+                            <option value="Ruang Cempaka Zoom">Ruang Cempaka Zoom</option>
+                            <option value="Ruang Aula Rawat Jalan">Ruang Aula Rawat Jalan</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="startTime" class="block text-sm font-medium text-gray-300 mb-1">Waktu Mulai</label>
+                        <input type="datetime-local" id="startTime" name="startTime" class="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-800 text-white focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div>
+                        <label for="endTime" class="block text-sm font-medium text-gray-300 mb-1">Waktu Selesai</label>
+                        <input type="datetime-local" id="endTime" name="endTime" class="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-800 text-white focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <button type="submit" id="submitButton" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300">
+                        Daftarkan Jadwal
+                    </button>
+                    <div id="loadingIndicator" class="hidden w-full text-center py-3">
+                        <svg class="animate-spin h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="ml-2 text-white">Menyimpan...</span>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Booking Queue -->
+            <div class="lg:col-span-2 bg-gray-900 text-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 border-b border-gray-600 pb-3">Antrean Pendaftar</h2>
+                <div class="flex items-center space-x-2 mb-4 text-sm text-gray-400">
+                    <span id="authStatus" class="font-medium">Status Autentikasi: ...</span>
+                </div>
+                <div id="bookingQueue" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                    <!-- Bookings will be dynamically inserted here -->
+                    <p id="emptyMessage" class="text-gray-400 text-center py-10">Memuat jadwal...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <p>Apakah Anda yakin ingin menghapus jadwal ini?</p>
+            <div class="flex justify-end gap-2 mt-4">
+                <button id="cancelDeleteBtn" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">Batal</button>
+                <button id="confirmDeleteBtn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white text-center py-4 mt-8">
+        <p>&copy; Rsu-HTA.KotaBanjar2025</p>
+    </footer>
+
+    <script type="module">
+        // Get the global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            // --- Firebase Initialization and Authentication ---
+            let db, auth;
+            let currentUserId = null;
+            let bookingsCollectionRef = null;
+            let loading = false;
+            let unsubscribeSnapshot = null;
+
+            // DOM elements
+            const bookingForm = document.getElementById('bookingForm');
+            const bookingQueue = document.getElementById('bookingQueue');
+            const emptyMessage = document.getElementById('emptyMessage');
+            const toast = document.getElementById('toast');
+            const deleteModal = document.getElementById('deleteModal');
+            const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+            const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+            const modalCloseBtn = document.querySelector('.modal .close-btn');
+            const submitButton = document.getElementById('submitButton');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const authStatus = document.getElementById('authStatus');
+
+            function showLoading(show) {
+                loading = show;
+                submitButton.style.display = show ? 'none' : 'block';
+                loadingIndicator.style.display = show ? 'block' : 'none';
+            }
+
+            // Function to show a custom toast notification
+            function showToast(message, isError = false) {
+                toast.textContent = message;
+                toast.className = `toast show ${isError ? 'bg-red-500' : 'bg-green-500'}`;
+                setTimeout(function(){ 
+                    toast.className = toast.className.replace("show", ""); 
+                }, 3000);
+            }
+
+            // Function to show the delete confirmation modal
+            function showDeleteModal(docId) {
+                deleteModal.style.display = 'block';
+                // Set a custom property to store the ID of the document to be deleted
+                deleteModal.dataset.docId = docId;
+            }
+
+            // Function to hide the modal
+            function hideDeleteModal() {
+                deleteModal.style.display = 'none';
+                deleteModal.dataset.docId = '';
+            }
+
+            // Handle modal close events
+            modalCloseBtn.onclick = hideDeleteModal;
+            cancelDeleteBtn.onclick = hideDeleteModal;
+            window.onclick = function(event) {
+                if (event.target == deleteModal) {
+                    hideDeleteModal();
+                }
+            };
+            
+            // Format date and time for display
+            function formatDateTime(date) {
+                return date.toLocaleString('id-ID', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }).replace(/\./g, ':');
+            }
+
+            // Function to render bookings from Firestore
+            function renderBookings(bookings) {
+                bookingQueue.innerHTML = ''; // Clear current view
+                
+                if (bookings.length === 0) {
+                    emptyMessage.textContent = 'Belum ada jadwal yang didaftarkan.';
+                    bookingQueue.appendChild(emptyMessage);
+                    emptyMessage.style.display = 'block';
+                } else {
+                    emptyMessage.style.display = 'none';
+
+                    // Sort bookings by start time in JavaScript
+                    bookings.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+                    
+                    bookings.forEach(booking => {
+                        const bookingElement = document.createElement('div');
+                        bookingElement.className = 'p-4 border border-gray-700 rounded-lg shadow-sm bg-gray-800 transition hover:shadow-md hover:border-blue-500 relative';
+                        
+                        const now = new Date();
+                        const startTime = new Date(booking.startTime);
+                        const endTime = new Date(booking.endTime);
+                        
+                        let statusClass = 'bg-yellow-200 text-yellow-900';
+                        let statusText = 'Akan Datang';
+
+                        if (now >= startTime && now <= endTime) {
+                            statusClass = 'bg-green-200 text-green-900';
+                            statusText = 'Sedang Berlangsung';
+                        } else if (now > endTime) {
+                            statusClass = 'bg-gray-600 text-gray-200';
+                            statusText = 'Selesai';
+                        }
+
+                        let deleteButtonHtml = '';
+                        // Show delete button only if the current user created the booking
+                        if (booking.userId === currentUserId) {
+                             deleteButtonHtml = `
+                                <button data-doc-id="${booking.id}" class="delete-btn absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1H9a1 1 0 00-1 1v3m3-3h3"></path>
+                                    </svg>
+                                </button>
+                            `;
+                        }
+
+                        bookingElement.innerHTML = `
+                            ${deleteButtonHtml}
+                            <div class="flex flex-col sm:flex-row justify-between sm:items-center">
+                                <div class="mb-2 sm:mb-0">
+                                    <h3 class="font-bold text-lg text-blue-400">${booking.room}</h3>
+                                    <p class="text-gray-200 font-semibold">${booking.agenda}</p>
+                                    <p class="text-sm text-gray-400">Oleh: ${booking.organizer}</p>
+                                    <p class="text-xs text-gray-500 mt-1">ID Pengguna: ${booking.userId}</p>
+                                </div>
+                                <div class="text-left sm:text-right">
+                                    <p class="text-sm text-gray-300">
+                                        <span class="font-medium">Mulai:</span> ${formatDateTime(startTime)}
+                                    </p>
+                                    <p class="text-sm text-gray-300">
+                                        <span class="font-medium">Selesai:</span> ${formatDateTime(endTime)}
+                                    </p>
+                                    <span class="mt-2 inline-block px-2 py-1 text-xs font-semibold rounded-full ${statusClass}">
+                                        ${statusText}
+                                    </span>
+                                </div>
+                            </div>
+                        `;
+                        bookingQueue.appendChild(bookingElement);
+                    });
+
+                    // Add event listeners for delete buttons
+                    bookingQueue.querySelectorAll('.delete-btn').forEach(button => {
+                        button.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const docId = e.currentTarget.dataset.docId;
+                            showDeleteModal(docId);
+                        });
+                    });
+                }
+            }
+
+            // Confirmation for delete button in the modal
+            confirmDeleteBtn.addEventListener('click', async () => {
+                const docId = deleteModal.dataset.docId;
+                if (!docId) return;
+
+                hideDeleteModal();
+                showToast("Menghapus jadwal...", false);
+                
+                try {
+                    // Delete the document from Firestore
+                    await deleteDoc(doc(db, bookingsCollectionRef.path, docId));
+                    showToast("Jadwal berhasil dihapus!");
+                } catch (error) {
+                    console.error("Error removing document: ", error);
+                    showToast("Gagal menghapus jadwal. Silakan coba lagi.", true);
+                }
+            });
+
+            // Exponential backoff for API calls
+            async function addDocumentWithRetry(data, retries = 5, delay = 1000) {
+                try {
+                    await addDoc(bookingsCollectionRef, data);
+                    return true;
+                } catch (error) {
+                    if (retries > 0) {
+                        await new Promise(res => setTimeout(res, delay));
+                        return addDocumentWithRetry(data, retries - 1, delay * 2);
+                    } else {
+                        throw error;
+                    }
+                }
+            }
+            
+            // --- Event Listeners and Main Logic ---
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            // Set up authentication state listener
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUserId = user.uid;
+                    authStatus.textContent = `Status Autentikasi: ${user.uid}`;
+                    console.log("User authenticated:", currentUserId);
+                    
+                    // Set up the collection reference and real-time listener
+                    const collectionPath = `artifacts/${appId}/public/data/meeting_bookings`;
+                    bookingsCollectionRef = collection(db, collectionPath);
+                    
+                    // Unsubscribe previous listener if it exists
+                    if (unsubscribeSnapshot) {
+                        unsubscribeSnapshot();
+                    }
+
+                    // Listen for real-time changes
+                    unsubscribeSnapshot = onSnapshot(bookingsCollectionRef, (snapshot) => {
+                        const bookings = [];
+                        snapshot.forEach((doc) => {
+                            bookings.push({ id: doc.id, ...doc.data() });
+                        });
+                        renderBookings(bookings);
+                    }, (error) => {
+                        console.error("Error listening to Firestore:", error);
+                        showToast("Gagal memuat jadwal. Silakan refresh halaman.", true);
+                    });
+
+                } else {
+                    console.log("No user signed in. Attempting anonymous sign-in.");
+                    authStatus.textContent = 'Status Autentikasi: Mengautentikasi...';
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken).catch(err => {
+                            console.error("Error with custom token:", err);
+                        });
+                    } else {
+                        await signInAnonymously(auth).catch(err => {
+                            console.error("Error with anonymous sign-in:", err);
+                        });
+                    }
+                }
+            });
+            
+            bookingForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                if (!bookingsCollectionRef || !currentUserId) {
+                    showToast("Sistem belum siap. Silakan tunggu sebentar.", true);
+                    return;
+                }
+                
+                showLoading(true);
+
+                const newBooking = {
+                    organizer: e.target.organizer.value,
+                    agenda: e.target.agenda.value,
+                    room: e.target.room.value,
+                    startTime: e.target.startTime.value,
+                    endTime: e.target.endTime.value,
+                    userId: currentUserId, // Store the user ID of the creator
+                    createdAt: new Date().toISOString() // Add a creation timestamp
+                };
+
+                const start = new Date(newBooking.startTime);
+                const end = new Date(newBooking.endTime);
+
+                // Validation
+                if (end <= start) {
+                    showToast("Waktu selesai harus setelah waktu mulai.", true);
+                    showLoading(false);
+                    return;
+                }
+                
+                try {
+                    // Fetch existing bookings to check for conflicts before adding
+                    const querySnapshot = await getDocs(bookingsCollectionRef);
+                    const existingBookings = querySnapshot.docs.map(doc => doc.data());
+                    
+                    const isConflict = existingBookings.some(booking => {
+                        return booking.room === newBooking.room &&
+                            (start < new Date(booking.endTime) && end > new Date(booking.startTime));
+                    });
+
+                    if (isConflict) {
+                        showToast("Jadwal di ruangan ini sudah terisi pada waktu tersebut.", true);
+                        showLoading(false);
+                        return;
+                    }
+                    
+                    // Add new document to Firestore with retry logic
+                    await addDocumentWithRetry(newBooking);
+                    bookingForm.reset();
+                    showToast("Jadwal berhasil didaftarkan!");
+                } catch (error) {
+                    console.error("Error adding document: ", error);
+                    showToast("Gagal mendaftar jadwal. Silakan coba lagi.", true);
+                } finally {
+                    showLoading(false);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
