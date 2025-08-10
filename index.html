@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -209,11 +210,25 @@
     </footer>
 
     <script type="module">
-        // Get the global variables provided by the Canvas environment
+        // =================================================================================================
+        // PENTING: Untuk menjalankan aplikasi ini di luar lingkungan Canvas (misalnya, di GitHub Pages),
+        // Anda harus memasukkan konfigurasi Firebase Anda di sini.
+        // =================================================================================================
+       const firebaseConfig = {
+  apiKey: "AIzaSyCxoUwVia0ntBjl-44sxdtqZY5uWeImfWo",
+  authDomain: "aplikasi-jadwal-ruang-rapat.firebaseapp.com",
+  projectId: "aplikasi-jadwal-ruang-rapat",
+  storageBucket: "aplikasi-jadwal-ruang-rapat.firebasestorage.app",
+  messagingSenderId: "230340771313",
+  appId: "1:230340771313:web:afc4d144af548273e91850",
+  measurementId: "G-D9CF8Q2JF3"
+};
+        
+        // Dapatkan variabel global dari lingkungan Canvas (jika ada)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
+        // --- Main Logic ---
         document.addEventListener('DOMContentLoaded', async function() {
             // --- Firebase Initialization and Authentication ---
             let db, auth;
@@ -399,6 +414,14 @@
             }
             
             // --- Event Listeners and Main Logic ---
+            
+            // Cek apakah konfigurasi Firebase valid sebelum diinisialisasi
+            if (!firebaseConfig.apiKey) {
+                showToast("Kesalahan: Konfigurasi Firebase tidak valid. Harap perbarui kode Anda.", true);
+                console.error("Firebase initialization failed: Missing or invalid configuration.");
+                return; // Hentikan eksekusi jika konfigurasi tidak valid
+            }
+
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
