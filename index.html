@@ -525,6 +525,7 @@
                     await addDocumentWithRetry(newBooking);
                     bookingForm.reset();
                     showToast("Jadwal berhasil didaftarkan!");
+                    
                 } catch (error) {
                     console.error("Error adding document: ", error);
                     showToast("Gagal mendaftar jadwal. Silakan coba lagi.", true);
