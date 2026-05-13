@@ -188,7 +188,7 @@
                 elements.submitBtn.disabled = false;
                 elements.submitBtn.textContent = 'Daftarkan Jadwal';
                 
-                bookingsCollectionRef = collection(db, `meetings_${appId}`);
+               bookingsCollectionRef = collection(db, "meetings");
                 
                 if (unsubscribeSnapshot) unsubscribeSnapshot();
                 unsubscribeSnapshot = onSnapshot(bookingsCollectionRef, (snap) => {
@@ -219,7 +219,7 @@
             window.delDoc = (id) => {
                 elements.modal.style.display = 'block';
                 elements.confirmBtn.onclick = async () => {
-                    await deleteDoc(doc(db, `meetings_${appId}`, id));
+                    await deleteDoc(doc(db, "meetings", id));
                     elements.modal.style.display = 'none';
                     showToast("Jadwal dihapus");
                 };
