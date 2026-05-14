@@ -142,15 +142,15 @@
 
     <script type="module">
         const firebaseConfig = {
-            apiKey: "AIzaSyCxoUwVia0ntBjl-44sxdtqZY5uWeImfWo",
-            authDomain: "jadwal-rapat-rsu.firebaseapp.com",
-            projectId: "jadwal-rapat-rsu",
-            storageBucket:"jadwal-rapat-rsu.firebasestorage.app",
-            messagingSenderId: "346447954494",
-            appId: "1:346447954494:web:cff3a04e7ff8f82620c76f",
-            measurementId: "G-FRBS879SJH"
+              apiKey: "AIzaSyBJd2IBrOWfgtK6Itwb4FEveC7LSJx1vlI",
+              authDomain: "jadwal-rapat-rsu.firebaseapp.com",
+              databaseURL: "https://jadwal-rapat-rsu-default-rtdb.asia-southeast1.firebasedatabase.app",
+              projectId: "jadwal-rapat-rsu",
+              storageBucket: "jadwal-rapat-rsu.firebasestorage.app",
+              messagingSenderId: "346447954494",
+              appId: "1:346447954494:web:cff3a04e7ff8f82620c76f",
+              measurementId: "G-FRBS879SJH"
         };
-
         document.addEventListener('DOMContentLoaded', async function() {
             let db, auth, currentUserId = null, bookingsCollectionRef = null, unsubscribeSnapshot = null;
             const appId = 'rsu-banjar-booking';
