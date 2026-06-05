@@ -200,16 +200,37 @@
 
             function render(bookings) {
                 elements.queue.innerHTML = bookings.length ? '' : '<p class="text-center py-10">Belum ada jadwal.</p>';
+                
+                // Ambil waktu lokal komputer saat ini
+                const sekarang = new Date();
+
                 bookings.sort((a,b) => new Date(a.startTime) - new Date(b.startTime)).forEach(b => {
+                    const mulaiRapat = new Date(b.startTime);
+                    const selesaiRapat = new Date(b.endTime);
+                    
+                    let statusBadge = '';
+                    
+                    // Logika penentuan status rapat
+                    if (sekarang >= mulaiRapat && sekarang <= selesaiRapat) {
+                        statusBadge = `<span class="inline-block text-xs font-bold text-green-400 bg-green-950 px-2.5 py-1 rounded border border-green-700 animate-pulse">● Sedang Berlangsung</span>`;
+                    } else if (sekarang > selesaiRapat) {
+                        statusBadge = `<span class="inline-block text-xs text-gray-400 bg-gray-800 px-2.5 py-1 rounded">Selesai</span>`;
+                    } else {
+                        statusBadge = `<span class="inline-block text-xs text-blue-400 bg-blue-950 px-2.5 py-1 rounded">Belum Mulai</span>`;
+                    }
+
                     const item = document.createElement('div');
                     item.className = 'p-4 border border-gray-700 rounded-lg bg-gray-800 relative';
                     item.innerHTML = `
-                        ${b.userId === currentUserId ? `<button onclick="window.delDoc('${b.id}')" class="absolute top-2 right-2 text-red-500">×</button>` : ''}
-                        <h3 class="font-bold text-blue-400">${b.room}</h3>
-                        <p class="font-semibold">${b.agenda}</p>
-                        <p class="text-xs text-gray-500">Oleh: ${b.organizer}</p>
-                        <div class="text-sm mt-2">
-                            <span>${formatDateTime(b.startTime)} - ${formatDateTime(b.endTime)}</span>
+                        ${b.userId === currentUserId ? `<button onclick="window.delDoc('${b.id}')" class="absolute top-2 right-2 text-red-500 text-xl font-bold p-1 hover:text-red-400">×</button>` : ''}
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                            <h3 class="font-bold text-blue-400 text-lg">${b.room}</h3>
+                            ${statusBadge}
+                        </div>
+                        <p class="font-semibold text-white mb-1">${b.agenda}</p>
+                        <p class="text-xs text-gray-400">Oleh: ${b.organizer}</p>
+                        <div class="text-sm mt-3 text-gray-300 font-medium bg-gray-900/50 p-2 rounded border border-gray-700/50 inline-block">
+                            <span>📅 ${formatDateTime(b.startTime)} — ${formatDateTime(b.endTime)}</span>
                         </div>
                     `;
                     elements.queue.appendChild(item);
@@ -227,24 +248,68 @@
 
             elements.form.onsubmit = async (e) => {
                 e.preventDefault();
+                
+                const roomValue = e.target.room.value;
+                const startValue = e.target.startTime.value;
+                const endValue = e.target.endTime.value;
+
+                // Validasi dasar: Jam Selesai tidak boleh kurang dari Jam Mulai
+                if (new Date(startValue) >= new Date(endValue)) {
+                    alert("⚠️ Waktu Selesai harus lebih lambat dari Waktu Mulai!");
+                    return;
+                }
+
                 elements.submitBtn.style.display = 'none';
                 elements.loading.style.display = 'block';
 
-                const data = {
-                    organizer: e.target.organizer.value,
-                    agenda: e.target.agenda.value,
-                    room: e.target.room.value,
-                    startTime: e.target.startTime.value,
-                    endTime: e.target.endTime.value,
-                    userId: currentUserId,
-                    createdAt: new Date().toISOString()
-                };
-
                 try {
+                    // ---- LOGIKA VALIDASI BENTROK JAM DI FIRESTORE ----
+                    const qSnapshot = await getDocs(bookingsCollectionRef);
+                    let isBentrok = false;
+
+                    qSnapshot.forEach((docSnap) => {
+                        const rapatLama = docSnap.data();
+                        
+                        // Periksa hanya untuk ruangan yang sama
+                        if (rapatLama.room === roomValue) {
+                            const inputMulai = new Date(startValue).getTime();
+                            const inputSelesai = new Date(endValue).getTime();
+                            const lamaMulai = new Date(rapatLama.startTime).getTime();
+                            const lamaSelesai = new Date(rapatLama.endTime).getTime();
+
+                            // Rumus Tumpang Tindih Jaringan Waktu:
+                            // Bentrok jika (Mulai Baru < Selesai Lama) DAN (Selesai Baru > Mulai Lama)
+                            if (inputMulai < lamaSelesai && inputSelesai > lamaMulai) {
+                                isBentrok = true;
+                            }
+                        }
+                    });
+
+                    if (isBentrok) {
+                        alert("⚠️ dialog jadwal sudah terpakai di jam ini");
+                        elements.submitBtn.style.display = 'block';
+                        elements.loading.style.display = 'none';
+                        return; // Batalkan proses simpan
+                    }
+                    // --------------------------------------------------
+
+                    const data = {
+                        organizer: e.target.organizer.value,
+                        agenda: e.target.agenda.value,
+                        room: roomValue,
+                        startTime: startValue,
+                        endTime: endValue,
+                        userId: currentUserId,
+                        createdAt: new Date().toISOString()
+                    };
+
                     await addDoc(bookingsCollectionRef, data);
                     e.target.reset();
                     showToast("Berhasil didaftarkan!");
-                } catch (err) { showToast("Gagal!", true); }
+                } catch (err) { 
+                    console.error(err);
+                    showToast("Gagal!", true); 
+                }
                 
                 elements.submitBtn.style.display = 'block';
                 elements.loading.style.display = 'none';
